@@ -1,0 +1,6 @@
+net.lotrek.lacewing
+net.lotrek.lacewing.client
+net.lotrek.lacewing.client.packet
+net.lotrek.lacewing.client.structure
+net.lotrek.lacewing.server
+net.lotrek.lacewing.server.packet
