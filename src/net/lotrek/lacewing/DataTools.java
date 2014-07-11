@@ -2,12 +2,20 @@ package net.lotrek.lacewing;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 public class DataTools
 {
+	public static byte[] readFile(File toRead) throws FileNotFoundException, IOException
+	{
+		return readDataBlock(new FileInputStream(toRead), (int) toRead.length());
+	}
+	
 	public static byte[] readDataBlock(InputStream is, int length) throws IOException
 	{
 		byte[] b = new byte[length];

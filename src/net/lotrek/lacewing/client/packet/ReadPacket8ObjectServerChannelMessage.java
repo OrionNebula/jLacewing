@@ -5,11 +5,10 @@ import java.io.IOException;
 
 import net.lotrek.lacewing.DataTools;
 import net.lotrek.lacewing.client.structure.Channel;
-import net.lotrek.lacewing.client.structure.Peer;
 
-public class ReadPacket3BinaryPeerMessage extends ReadPacket
+public class ReadPacket8ObjectServerChannelMessage extends ReadPacket
 {
-	private int subChannel, peerID, channel;
+	private int subChannel, channel;
 	private byte[] data;
 	
 	public ReadPacket getProcessedPacket()
@@ -18,12 +17,11 @@ public class ReadPacket3BinaryPeerMessage extends ReadPacket
 		subChannel = (int)this.getPacketData()[0] & 0xff;
 		try {
 			channel = DataTools.readInversedShort(bais);
-			peerID = DataTools.readInversedShort(bais);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		data = new byte[this.getPacketData().length - 5];
-		System.arraycopy(getPacketData(), 5, data, 0, data.length);
+		data = new byte[this.getPacketData().length - 3];
+		System.arraycopy(getPacketData(), 3, data, 0, data.length);
 		
 		return this;
 	}
@@ -38,18 +36,13 @@ public class ReadPacket3BinaryPeerMessage extends ReadPacket
 		return Channel.getChannel(PacketHandlerClient.getThreadAsThis().getClient(), channel);
 	}
 	
-	public Peer getPeer()
+	public String getMessageData()
 	{
-		return Peer.getPeer(PacketHandlerClient.getThreadAsThis().getClient(), peerID);
-	}
-	
-	public byte[] getMessageData()
-	{
-		return this.data;
+		return new String(this.data);
 	}
 	
 	public int getPacketType()
 	{
-		return 3;
+		return 8;
 	}
 }

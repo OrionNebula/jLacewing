@@ -50,6 +50,6 @@ public class ReadPacket2BinaryChannelMessage extends ReadPacket
 	
 	public int getPacketType()
 	{
-		return 1;
+		return 2;
 	}
 }

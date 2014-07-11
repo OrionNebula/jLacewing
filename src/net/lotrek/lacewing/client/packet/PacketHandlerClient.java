@@ -7,7 +7,7 @@ import java.util.HashMap;
 import net.lotrek.lacewing.LacewingException;
 import net.lotrek.lacewing.MethodObjectPair;
 import net.lotrek.lacewing.client.LacewingClient;
-import net.lotrek.lacewing.client.structure.Peer;
+import net.lotrek.lacewing.client.structure.Channel;
 
 public class PacketHandlerClient extends Thread
 {
@@ -16,12 +16,10 @@ public class PacketHandlerClient extends Thread
 	
 	public void run()
 	{
-		try {
-			registerPacketTrigger(ReadPacket11Ping.class, new MethodObjectPair(this.getClass().getMethod("handlePing", ReadPacket11Ping.class), this));
-			registerPacketTrigger(ReadPacket9Peer.class, new MethodObjectPair(this.getClass().getMethod("handlePeer", ReadPacket9Peer.class), this));
-		} catch (NoSuchMethodException | SecurityException e1) {
-			e1.printStackTrace();
-		}
+		registerPacketTrigger(ReadPacket11Ping.class, new MethodObjectPair("handlePing", PacketHandlerClient.class, this));
+		registerPacketTrigger(ReadPacket9Peer.class, new MethodObjectPair("handlePeer", PacketHandlerClient.class, this));
+		registerPacketTrigger(ReadPacket0Response3LeaveChannel.class, new MethodObjectPair("handleLeaveChannel", Channel.class, null));
+		
 		
 		while(!interrupted())
 		{
@@ -34,7 +32,7 @@ public class PacketHandlerClient extends Thread
 				if(packetTriggers.containsKey(packet.getClass()))
 					packetTriggers.get(packet.getClass()).invoke(packet);
 				else
-					throw new LacewingException("Packet " + packet.getPacketType() + " has no handler");
+					throw new LacewingException("Packet " + packet.getPacketType() + " : " + packet.getClass().getSimpleName() + " has no handler");
 				
 			} catch (IOException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | LacewingException e) {
 				client.handleOtherworldException(e);
@@ -76,10 +74,7 @@ public class PacketHandlerClient extends Thread
 	
 	public void handlePeer(ReadPacket9Peer packet)
 	{
-		int action = packet.getActionType(getClient());
-		Peer peer = Peer.getPeer(getClient(), packet.getPeerID());
 		packet.updatePeer(getClient());
-		System.out.println(peer + " has been updated: " + action);
 	}
 	
 	public static PacketHandlerClient getThreadAsThis()

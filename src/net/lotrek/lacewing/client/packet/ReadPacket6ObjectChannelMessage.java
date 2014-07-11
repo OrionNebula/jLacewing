@@ -7,7 +7,7 @@ import net.lotrek.lacewing.DataTools;
 import net.lotrek.lacewing.client.structure.Channel;
 import net.lotrek.lacewing.client.structure.Peer;
 
-public class ReadPacket3BinaryPeerMessage extends ReadPacket
+public class ReadPacket6ObjectChannelMessage extends ReadPacket
 {
 	private int subChannel, peerID, channel;
 	private byte[] data;
@@ -43,13 +43,13 @@ public class ReadPacket3BinaryPeerMessage extends ReadPacket
 		return Peer.getPeer(PacketHandlerClient.getThreadAsThis().getClient(), peerID);
 	}
 	
-	public byte[] getMessageData()
+	public String getMessageData()
 	{
-		return this.data;
+		return new String(this.data);
 	}
 	
 	public int getPacketType()
 	{
-		return 3;
+		return 6;
 	}
 }

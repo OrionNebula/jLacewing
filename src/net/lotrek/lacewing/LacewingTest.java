@@ -9,6 +9,11 @@ public class LacewingTest
 {
 	public static void main(String[] args) throws LacewingException
 	{
+		pylacewingExample();
+	}
+	
+	public static void pylacewingExample() throws LacewingException
+	{
 		Scanner in = new Scanner(System.in);
 		System.out.print("Host: ");
 		String host = in.nextLine();

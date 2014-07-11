@@ -13,7 +13,7 @@ public class ReadPacket9Peer extends ReadPacket
 {
 	public static final int JOIN = 0, CHANGE = 1, LEFT = 2;
 	
-	private int channel, peer;
+	private int channel, peer, action = -1;
 	private boolean isChannelMaster;
 	private String name;
 	
@@ -28,6 +28,7 @@ public class ReadPacket9Peer extends ReadPacket
 				isChannelMaster = is.read() == 1;
 				name = new String(DataTools.readDataBlock(is, is.available()));
 			}
+			action = getActionType(PacketHandlerClient.getThreadAsThis().getClient());
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -37,6 +38,9 @@ public class ReadPacket9Peer extends ReadPacket
 
 	public int getActionType(LacewingClient lc)
 	{
+		if(action > -1)
+			return action;
+		
 		if(!lc.knownPeers.containsKey(peer)) 	return JOIN;
 		else if(name == null) 					return LEFT;
 		else 									return CHANGE;
