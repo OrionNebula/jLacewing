@@ -9,30 +9,30 @@ import java.util.HashMap;
 import net.lotrek.lacewing.LacewingException;
 import net.lotrek.lacewing.MethodObjectPair;
 import net.lotrek.lacewing.client.packet.PacketHandlerClient;
-import net.lotrek.lacewing.client.packet.ReadPacket;
-import net.lotrek.lacewing.client.packet.ReadPacket0Response;
-import net.lotrek.lacewing.client.packet.ReadPacket0Response0Connect;
-import net.lotrek.lacewing.client.packet.ReadPacket0Response1SetName;
-import net.lotrek.lacewing.client.packet.ReadPacket0Response2JoinChannel;
-import net.lotrek.lacewing.client.packet.ReadPacket0Response3LeaveChannel;
-import net.lotrek.lacewing.client.packet.ReadPacket0Response4ChannelList;
-import net.lotrek.lacewing.client.packet.ReadPacket11Ping;
-import net.lotrek.lacewing.client.packet.ReadPacket1BinaryServerMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket2BinaryChannelMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket3BinaryPeerMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket4BinaryServerChannelMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket5ObjectServerMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket6ObjectChannelMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket7ObjectPeerMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket8ObjectServerChannelMessage;
-import net.lotrek.lacewing.client.packet.ReadPacket9Peer;
-import net.lotrek.lacewing.client.packet.WritePacket;
-import net.lotrek.lacewing.client.packet.WritePacket0Request0Connect;
-import net.lotrek.lacewing.client.packet.WritePacket0Request1SetName;
-import net.lotrek.lacewing.client.packet.WritePacket0Request4ChannelList;
-import net.lotrek.lacewing.client.packet.WritePacket1BinaryServerMessage;
-import net.lotrek.lacewing.client.structure.Channel;
-import net.lotrek.lacewing.client.structure.Peer;
+import net.lotrek.lacewing.client.packet.ClientReadPacket;
+import net.lotrek.lacewing.client.packet.ClientReadPacket0Response;
+import net.lotrek.lacewing.client.packet.ClientReadPacket0Response0Connect;
+import net.lotrek.lacewing.client.packet.ClientReadPacket0Response1SetName;
+import net.lotrek.lacewing.client.packet.ClientReadPacket0Response2JoinChannel;
+import net.lotrek.lacewing.client.packet.ClientReadPacket0Response3LeaveChannel;
+import net.lotrek.lacewing.client.packet.ClientReadPacket0Response4ChannelList;
+import net.lotrek.lacewing.client.packet.ClientReadPacket11Ping;
+import net.lotrek.lacewing.client.packet.ClientReadPacket1BinaryServerMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket2BinaryChannelMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket3BinaryPeerMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket4BinaryServerChannelMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket5ObjectServerMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket6ObjectChannelMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket7ObjectPeerMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket8ObjectServerChannelMessage;
+import net.lotrek.lacewing.client.packet.ClientReadPacket9Peer;
+import net.lotrek.lacewing.client.packet.ClientWritePacket;
+import net.lotrek.lacewing.client.packet.ClientWritePacket0Request0Connect;
+import net.lotrek.lacewing.client.packet.ClientWritePacket0Request1SetName;
+import net.lotrek.lacewing.client.packet.ClientWritePacket0Request4ChannelList;
+import net.lotrek.lacewing.client.packet.ClientWritePacket1BinaryServerMessage;
+import net.lotrek.lacewing.client.structure.ClientChannel;
+import net.lotrek.lacewing.client.structure.ClientPeer;
 
 public class LacewingClient
 {
@@ -44,11 +44,11 @@ public class LacewingClient
 	/**
 	 * The map of this instance's known channels
 	 */
-	public final HashMap<String, Channel> globalChannelMap = new HashMap<String, Channel>();
+	public final HashMap<String, ClientChannel> globalChannelMap = new HashMap<String, ClientChannel>();
 	/**
 	 * The map of this instance's known peers
 	 */
-	public final HashMap<Integer, Peer> knownPeers = new HashMap<Integer, Peer>();
+	public final HashMap<Integer, ClientPeer> knownPeers = new HashMap<Integer, ClientPeer>();
 	
 	private Socket sock;
 	private String address;
@@ -57,9 +57,10 @@ public class LacewingClient
 	private DataOutputStream dos;
 	private boolean isConnected, isActive;
 	private PacketHandlerClient packetHandler = new PacketHandlerClient();
+	private ClientPacketActions packetActions;
 	private volatile int clientID = -1;
 	private volatile String name, welcomeMessage;
-	private volatile Channel[] temporaryChannelList;
+	private volatile ClientChannel[] temporaryChannelList;
 	
 	/**
 	 * Constructs a new LacewingClient connected to the specified address
@@ -79,12 +80,24 @@ public class LacewingClient
 			
 			isConnected = true;
 			
+			getPacketHandler().registerPacketTrigger(ClientReadPacket0Response0Connect.class, new MethodObjectPair("handleConnect", LacewingClient.class, this));
 			getPacketHandler().init(this);
 		} catch (IOException e) {
 			LacewingException le = new LacewingException("Unable to open socket");
 			le.initCause(e);
 			throw le;
 		}
+	}
+	
+	/**
+	 * Constructs a new LacewingClient object connected to the specified address on port 6121
+	 * 
+	 * @param addr the address or host name to connect to
+	 * @throws LacewingException thrown on any IO errors
+	 */
+	public LacewingClient(String addr) throws LacewingException
+	{
+		this(addr, 6121);
 	}
 	
 	/**
@@ -127,8 +140,7 @@ public class LacewingClient
 			return "";
 		
 		try {
-			getPacketHandler().registerPacketTrigger(ReadPacket0Response0Connect.class, new MethodObjectPair("handleConnect", LacewingClient.class, this));
-			WritePacket.writePacketToStream(getOutputStream(), new WritePacket0Request0Connect());
+			ClientWritePacket.writePacketToStream(getOutputStream(), new ClientWritePacket0Request0Connect());
 			while(getClientID() == -1) getClientID();
 			this.isActive = true;
 			return this.welcomeMessage;
@@ -140,10 +152,11 @@ public class LacewingClient
 		}
 	}
 	
-	public void handleConnect(ReadPacket0Response0Connect packet)
+	public void handleConnect(ClientReadPacket0Response0Connect packet)
 	{
 		this.welcomeMessage = packet.getWelcomeMessage();
 		this.clientID = packet.getClientID();
+		this.getPacketActions().onConnect(packet.getPacketSuccess(), welcomeMessage);
 	}
 	
 	/**
@@ -159,8 +172,8 @@ public class LacewingClient
 		
 		try {
 			this.name = null;
-			getPacketHandler().registerPacketTrigger(ReadPacket0Response1SetName.class, new MethodObjectPair("handleNameSet", LacewingClient.class, this));
-			WritePacket.writePacketToStream(getOutputStream(), new WritePacket0Request1SetName(name));
+			getPacketHandler().registerPacketTrigger(ClientReadPacket0Response1SetName.class, new MethodObjectPair("handleNameSet", LacewingClient.class, this));
+			ClientWritePacket.writePacketToStream(getOutputStream(), new ClientWritePacket0Request1SetName(name));
 			while(getName() == null) getName();
 		} catch (IOException e) {
 			LacewingException le = new LacewingException("Unable to set name");
@@ -169,7 +182,7 @@ public class LacewingClient
 		}
 	}
 	
-	public void handleNameSet(ReadPacket0Response1SetName packet)
+	public void handleNameSet(ClientReadPacket0Response1SetName packet)
 	{
 		this.name = packet.getName();
 	}
@@ -180,13 +193,13 @@ public class LacewingClient
 	 * @return channel list
 	 * @throws LacewingException thrown if channel listing fails
 	 */
-	public Channel[] getChannelList() throws LacewingException
+	public ClientChannel[] getChannelList() throws LacewingException
 	{
 		try {
-			getPacketHandler().registerPacketTrigger(ReadPacket0Response4ChannelList.class, new MethodObjectPair("handleChannelList", LacewingClient.class, this));
-			WritePacket.writePacketToStream(getOutputStream(), new WritePacket0Request4ChannelList());
+			getPacketHandler().registerPacketTrigger(ClientReadPacket0Response4ChannelList.class, new MethodObjectPair("handleChannelList", LacewingClient.class, this));
+			ClientWritePacket.writePacketToStream(getOutputStream(), new ClientWritePacket0Request4ChannelList());
 			while(temporaryChannelList == null) this.toString();
-			Channel[] tmp = temporaryChannelList;
+			ClientChannel[] tmp = temporaryChannelList;
 			temporaryChannelList = null;
 			return tmp;
 		} catch (IOException e) {
@@ -196,7 +209,7 @@ public class LacewingClient
 		}
 	}
 	
-	public void handleChannelList(ReadPacket0Response4ChannelList packet)
+	public void handleChannelList(ClientReadPacket0Response4ChannelList packet)
 	{
 		temporaryChannelList = packet.getChannels();
 	}
@@ -211,7 +224,7 @@ public class LacewingClient
 	public void sendBinaryServerMessage(int subChannel, byte[] data) throws LacewingException
 	{
 		try {
-			WritePacket.writePacketToStream(getOutputStream(), new WritePacket1BinaryServerMessage(subChannel, data));
+			ClientWritePacket.writePacketToStream(getOutputStream(), new ClientWritePacket1BinaryServerMessage(subChannel, data));
 		} catch (IOException e) {
 			LacewingException le = new LacewingException("Unable to send binary server message");
 			le.initCause(e);
@@ -262,6 +275,7 @@ public class LacewingClient
 		getPacketHandler().interrupt();
 		
 		try {
+			sock.getOutputStream().flush();
 			sock.close();
 			isConnected = false;
 			isActive = false;
@@ -293,6 +307,7 @@ public class LacewingClient
 			knownPeers.clear();
 			
 			packetHandler = new PacketHandlerClient();
+			getPacketHandler().registerPacketTrigger(ClientReadPacket0Response0Connect.class, new MethodObjectPair("handleConnect", LacewingClient.class, this));
 			getPacketHandler().init(this);
 		} catch (IOException e) {
 			LacewingException le = new LacewingException("Unable to open socket");
@@ -301,6 +316,14 @@ public class LacewingClient
 		}
 	}
 	
+	public ClientPacketActions getPacketActions() {
+		return packetActions;
+	}
+
+	public void setPacketActions(ClientPacketActions packetActions) {
+		this.packetActions = packetActions;
+	}
+
 	/**
 	 * Handles an out-of-thread exception. This method is pointless.
 	 * 
@@ -313,25 +336,25 @@ public class LacewingClient
 	
 	private static void regsiterPackets()
 	{
-		ReadPacket.registerPacket(ReadPacket0Response0Connect.class, 0);
+		ClientReadPacket.registerPacket(ClientReadPacket0Response0Connect.class, 0);
 		{
-			ReadPacket0Response.registerSubpacket(ReadPacket0Response0Connect.class, 0);
-			ReadPacket0Response.registerSubpacket(ReadPacket0Response1SetName.class, 1);
-			ReadPacket0Response.registerSubpacket(ReadPacket0Response2JoinChannel.class, 2);
-			ReadPacket0Response.registerSubpacket(ReadPacket0Response3LeaveChannel.class, 3);
-			ReadPacket0Response.registerSubpacket(ReadPacket0Response4ChannelList.class, 4);
+			ClientReadPacket0Response.registerSubpacket(ClientReadPacket0Response0Connect.class, 0);
+			ClientReadPacket0Response.registerSubpacket(ClientReadPacket0Response1SetName.class, 1);
+			ClientReadPacket0Response.registerSubpacket(ClientReadPacket0Response2JoinChannel.class, 2);
+			ClientReadPacket0Response.registerSubpacket(ClientReadPacket0Response3LeaveChannel.class, 3);
+			ClientReadPacket0Response.registerSubpacket(ClientReadPacket0Response4ChannelList.class, 4);
 		}
 		
-		ReadPacket.registerPacket(ReadPacket1BinaryServerMessage.class, 1);
-		ReadPacket.registerPacket(ReadPacket2BinaryChannelMessage.class, 2);
-		ReadPacket.registerPacket(ReadPacket3BinaryPeerMessage.class, 3);
-		ReadPacket.registerPacket(ReadPacket4BinaryServerChannelMessage.class, 4);
-		ReadPacket.registerPacket(ReadPacket5ObjectServerMessage.class, 5);
-		ReadPacket.registerPacket(ReadPacket6ObjectChannelMessage.class, 6);
-		ReadPacket.registerPacket(ReadPacket7ObjectPeerMessage.class, 7);
-		ReadPacket.registerPacket(ReadPacket8ObjectServerChannelMessage.class, 8);
-		ReadPacket.registerPacket(ReadPacket9Peer.class, 9);
-		ReadPacket.registerPacket(null, 10); //UDP packet
-		ReadPacket.registerPacket(ReadPacket11Ping.class, 11);
+		ClientReadPacket.registerPacket(ClientReadPacket1BinaryServerMessage.class, 1);
+		ClientReadPacket.registerPacket(ClientReadPacket2BinaryChannelMessage.class, 2);
+		ClientReadPacket.registerPacket(ClientReadPacket3BinaryPeerMessage.class, 3);
+		ClientReadPacket.registerPacket(ClientReadPacket4BinaryServerChannelMessage.class, 4);
+		ClientReadPacket.registerPacket(ClientReadPacket5ObjectServerMessage.class, 5);
+		ClientReadPacket.registerPacket(ClientReadPacket6ObjectChannelMessage.class, 6);
+		ClientReadPacket.registerPacket(ClientReadPacket7ObjectPeerMessage.class, 7);
+		ClientReadPacket.registerPacket(ClientReadPacket8ObjectServerChannelMessage.class, 8);
+		ClientReadPacket.registerPacket(ClientReadPacket9Peer.class, 9);
+		ClientReadPacket.registerPacket(null, 10); //UDP packet
+		ClientReadPacket.registerPacket(ClientReadPacket11Ping.class, 11);
 	}
 }
